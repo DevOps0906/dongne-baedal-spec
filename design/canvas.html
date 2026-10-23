@@ -1,0 +1,1171 @@
+<title>동네배달 디자인 캔버스</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: 상단 표지 → 고정 섹션 내비 → 섹션별 캔버스. 페이지 크롬은 테마를 따르고, 시안 프레임 안은 앱 고유 라이트 팔레트를 유지 */
+:root{
+  --page:#F1F1F4; --panel:#FFFFFF; --ink:#17171C; --ink-2:#5B5B67; --ink-3:#7C7C89; --line:#E2E2E8;
+  --accent:#D63E1C; --accent-soft:#FFEDE7; --frame:#17171C;
+  --f-sans:"Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* 앱 시안 전용 (동네배달 tokens.json 값, 테마와 무관) */
+  --a-brand:#FF5A36; --a-brand-press:#E84521; --a-brand-50:#FFF1ED; --a-brand-700:#C2361A;
+  --a-bg:#FFFFFF; --a-muted:#F8F8F9; --a-line:#E4E4E8; --a-ink:#17171C; --a-ink2:#5B5B67; --a-ink3:#7C7C89;
+  --a-success:#1E9E5A; --a-warning:#F5A524; --a-danger:#E5484D; --a-info:#2F7DE1;
+  --m-land:#F2F1EE; --m-block:#E5E3DD; --m-road:#FFFFFF; --m-park:#D9EAD3; --m-water:#CFE3F1;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#111114; --panel:#1B1B20; --ink:#F1F1F3; --ink-2:#B4B4BE; --ink-3:#8C8C98; --line:#2E2E36;
+    --accent:#FF8562; --accent-soft:#3A1C14; --frame:#000000; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#111114; --panel:#1B1B20; --ink:#F1F1F3; --ink-2:#B4B4BE; --ink-3:#8C8C98; --line:#2E2E36;
+  --accent:#FF8562; --accent-soft:#3A1C14; --frame:#000000; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--f-sans);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--page)}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{text-wrap:balance;margin:0}
+.mono{font-family:var(--f-mono)}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 표지 */
+.cover{padding-block:48px 28px;display:grid;gap:20px}
+.cover .eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase}
+.cover h1{font-size:clamp(30px,5vw,48px);font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.cover h1 b{color:var(--accent)}
+.cover p{max-width:62ch;color:var(--ink-2);margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px}
+.meta span{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--ink-2);background:var(--panel)}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.role{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:4px;min-width:0}
+.role h3{font-size:16px}
+.role .ch{font-family:var(--f-mono);font-size:12px;color:var(--accent)}
+.role p{font-size:14px;color:var(--ink-2);margin:0}
+
+/* 내비 */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--page);padding-block:10px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.nav ul{list-style:none;margin:0 auto;padding:0;display:flex;gap:6px;overflow-x:auto;max-width:1180px;scrollbar-width:none}
+.nav a{display:block;white-space:nowrap;text-decoration:none;color:var(--ink-2);font-size:14px;font-weight:500;padding:6px 12px;border-radius:999px}
+.nav a:hover{background:var(--panel);color:var(--ink)}
+
+/* 섹션 */
+section{padding-block:44px 8px;scroll-margin-top:64px}
+.sec-head{display:grid;gap:6px;margin-bottom:22px;max-width:70ch}
+.sec-head .tag{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+.sec-head h2{font-size:clamp(22px,3vw,28px);font-weight:800;letter-spacing:-.01em}
+.sec-head p{margin:0;color:var(--ink-2)}
+.sub{font-size:17px;font-weight:700;margin:28px 0 12px}
+
+/* 디자인 시스템 */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
+.sw i{display:block;height:56px}
+.sw div{padding:8px 10px;font-size:13px}
+.sw code{font-family:var(--f-mono);font-size:12px;color:var(--ink-3);display:block}
+.scale{display:flex;height:34px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.scale i{flex:1}
+.tbl-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--ink-2);font-size:13px}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--f-mono)}
+.comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.comp{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.comp > h4{margin:0;font-size:13px;font-family:var(--f-mono);color:var(--ink-3);font-weight:500}
+.comp .stage{background:var(--a-bg);border-radius:10px;padding:14px;color:var(--a-ink);border:1px solid var(--a-line)}
+
+/* 반응형 와이어 */
+.bp{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:start}
+.bp-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.bp-card h4{margin:0;font-size:15px}
+.bp-card .rng{font-family:var(--f-mono);font-size:12px;color:var(--accent)}
+.wire{background:var(--a-muted);border:1px solid var(--a-line);border-radius:10px;padding:8px;display:grid;gap:6px;height:210px;align-content:start}
+.wire .bar{height:14px;border-radius:4px;background:#D9D9DF}
+.wire .bar.br{background:var(--a-brand);opacity:.8}
+.wire .g{display:grid;gap:6px}
+.wire .c{height:44px;border-radius:6px;background:#fff;border:1px solid var(--a-line)}
+.wire .tabs{margin-top:auto;height:16px;border-radius:4px;background:#C9C9D1}
+.bp-card ul{margin:0;padding-left:18px;font-size:14px;color:var(--ink-2)}
+
+/* 시안 프레임 */
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px 20px;justify-items:center}
+.shot{display:grid;gap:12px;width:300px;max-width:100%}
+.cap{display:grid;gap:4px}
+.cap .id{font-family:var(--f-mono);font-size:12px;color:var(--accent)}
+.cap b{font-size:15px}
+.cap ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink-2);display:grid;gap:2px}
+.phone{width:300px;max-width:100%;height:620px;border:8px solid var(--frame);border-radius:38px;background:var(--a-bg);overflow:hidden;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;color:var(--a-ink);font-size:13px;line-height:1.45;background:var(--a-bg)}
+.sb{height:28px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font-size:11px;font-weight:700;font-family:var(--f-mono)}
+.body{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.tabbar{flex:none;height:56px;border-top:1px solid var(--a-line);display:grid;grid-template-columns:repeat(5,1fr);background:#fff}
+.tabbar span{display:grid;justify-items:center;align-content:center;gap:2px;font-size:10px;color:var(--a-ink3)}
+.tabbar span.on{color:var(--a-ink);font-weight:700}
+.ic{width:18px;height:18px;display:inline-block;stroke-width:2;vertical-align:middle;flex:none}
+.ic-s{width:14px;height:14px}
+
+/* 앱 공통 조각 */
+.row{display:flex;align-items:center;gap:8px}
+.sp{justify-content:space-between}
+.px{padding-inline:16px}
+.addr{font-weight:800;font-size:15px}
+.search{margin:10px 16px 0;height:40px;border-radius:999px;background:var(--a-muted);border:1.5px solid var(--a-ink);display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--a-ink3)}
+.svc{display:flex;gap:16px;padding:12px 16px 0;border-bottom:1px solid var(--a-line);font-weight:700;font-size:14px;color:var(--a-ink3)}
+.svc span{padding-bottom:8px}
+.svc .on{color:var(--a-ink);box-shadow:inset 0 -2px 0 var(--a-ink)}
+.cats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px 4px;padding:14px 12px 4px}
+.cat{display:grid;justify-items:center;gap:4px;font-size:11px}
+.cat i{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--a-muted);color:var(--a-ink2)}
+.banner{margin:10px 16px;border-radius:14px;background:var(--a-brand);color:#fff;padding:14px 16px;display:grid;gap:2px}
+.banner small{opacity:.9;font-size:11px}
+.banner b{font-size:17px;line-height:1.3}
+.h-sec{font-weight:800;font-size:15px;padding:8px 16px 8px}
+.card{margin:0 16px 12px;display:grid;gap:6px}
+.thumb{border-radius:12px;aspect-ratio:16/9;max-width:100%;background:linear-gradient(135deg,#F9C784,#F08A5D)}
+.thumb.b{background:linear-gradient(135deg,#B5D99C,#6FA86B)}
+.thumb.c{background:linear-gradient(135deg,#F6D186,#E3A05A)}
+.sname{font-weight:700;font-size:14px}
+.smeta{font-size:12px;color:var(--a-ink2);display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+.star{color:#F5A524;font-weight:700}
+.badge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;border-radius:6px;padding:2px 6px;background:var(--a-brand-50);color:var(--a-brand-700)}
+.badge.gray{background:var(--a-muted);color:var(--a-ink2)}
+.badge.ok{background:#E6F5EC;color:#15763F}
+.badge.info{background:#E7F0FC;color:#1F5FB3}
+.badge.warn{background:#FEF3DC;color:#8A5A00}
+.badge.red{background:#FDECEC;color:#B4262B}
+.btn{height:48px;border-radius:12px;background:var(--a-brand);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;border:0}
+.btn.ghost{background:#fff;color:var(--a-ink);border:1px solid var(--a-line)}
+.btn.dark{background:var(--a-ink)}
+.fixed-b{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 14px;background:#fff;border-top:1px solid var(--a-line)}
+.divider{height:8px;background:var(--a-muted);flex:none}
+
+/* 가게 상세 */
+.cover-img{height:150px;flex:none;background:linear-gradient(135deg,#F9C784,#E46B3E)}
+.store-head{margin:-28px 16px 0;background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(23,23,28,.10);padding:14px;display:grid;gap:6px;text-align:center;position:relative}
+.store-head h3{font-size:18px}
+.dinfo{display:grid;grid-template-columns:repeat(3,1fr);margin:12px 16px 0;border:1px solid var(--a-line);border-radius:12px;text-align:center;font-size:11px;color:var(--a-ink2)}
+.dinfo div{padding:8px 4px;display:grid;gap:1px}
+.dinfo div+div{border-left:1px solid var(--a-line)}
+.dinfo b{font-size:13px;color:var(--a-ink)}
+.mtabs{display:flex;gap:14px;padding:12px 16px 0;margin-top:12px;border-bottom:1px solid var(--a-line);font-size:13px;font-weight:700;color:var(--a-ink3);white-space:nowrap;overflow:hidden}
+.mtabs span{padding-bottom:8px}
+.mtabs .on{color:var(--a-ink);box-shadow:inset 0 -2px 0 var(--a-ink)}
+.mrow{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--a-line)}
+.mrow > div{flex:1;min-width:0;display:grid;gap:2px}
+.mrow small{color:var(--a-ink2);font-size:12px}
+.mrow .pic{width:72px;height:72px;border-radius:12px;flex:none;background:linear-gradient(135deg,#F9C784,#F08A5D)}
+
+/* 시트 */
+.dim{position:absolute;inset:0;background:rgba(23,23,28,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;max-height:88%;display:flex;flex-direction:column;overflow:hidden}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--a-line);margin:8px auto 4px;flex:none}
+.og{padding:12px 16px;border-top:8px solid var(--a-muted);display:grid;gap:8px}
+.og-h{display:flex;align-items:center;gap:6px;font-weight:700}
+.opt{display:flex;align-items:center;gap:10px;font-size:13px}
+.opt .r{width:18px;height:18px;border-radius:50%;border:2px solid #C9C9D1;flex:none}
+.opt .r.on{border:5px solid var(--a-brand)}
+.opt .cb{width:18px;height:18px;border-radius:5px;border:2px solid #C9C9D1;flex:none}
+.opt .cb.on{background:var(--a-brand);border-color:var(--a-brand)}
+.opt span:last-child{margin-left:auto;color:var(--a-ink2)}
+.stepper{display:flex;align-items:center;border:1px solid var(--a-line);border-radius:10px;height:34px}
+.stepper span{width:34px;text-align:center;font-weight:700}
+
+/* 장바구니 */
+.progress{height:6px;border-radius:3px;background:var(--a-muted);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--a-brand)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--a-muted);border-radius:10px;padding:3px;font-size:12px;font-weight:700;text-align:center}
+.seg span{padding:6px 0;border-radius:8px;color:var(--a-ink2)}
+.seg .on{background:#fff;color:var(--a-ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.sum{display:grid;gap:6px;font-size:13px}
+.sum div{display:flex;justify-content:space-between}
+.sum .tot{font-weight:800;font-size:15px;border-top:1px solid var(--a-line);padding-top:8px}
+
+/* 지도 */
+.map{position:relative;flex:none;overflow:hidden;background:var(--m-land)}
+.map svg{display:block;width:100%;height:100%}
+.eta{display:grid;gap:2px}
+.eta b{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.tl{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center;font-size:10px;color:var(--a-ink3)}
+.tl i{display:block;height:4px;border-radius:2px;background:var(--a-line);margin-bottom:4px}
+.tl .done i{background:var(--a-ink2)} .tl .done{color:var(--a-ink2)}
+.tl .now i{background:var(--a-brand)} .tl .now{color:var(--a-brand-700);font-weight:700}
+.person{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--a-line);border-radius:12px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--a-muted);display:grid;place-items:center;color:var(--a-ink2);flex:none}
+.round-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--a-line);display:grid;place-items:center;margin-left:auto;flex:none}
+
+/* 라이더 */
+.offer{position:absolute;left:12px;right:12px;bottom:12px;background:#fff;border-radius:18px;box-shadow:0 8px 28px rgba(0,0,0,.2);padding:16px;display:grid;gap:12px}
+.timer{width:52px;height:52px;flex:none}
+.route{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:13px}
+.route .dot{width:10px;height:10px;border-radius:50%;background:var(--a-ink)}
+.route .dot.h{background:var(--a-info)}
+.route .ln{width:2px;height:16px;background:var(--a-line);margin-left:4px}
+.big{height:56px;font-size:17px;border-radius:14px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px;text-align:center}
+.steps span{padding:6px 0;border-radius:8px;background:var(--a-muted);color:var(--a-ink3);font-weight:700}
+.steps .done{background:#E6F5EC;color:#15763F}
+.steps .now{background:var(--a-brand-50);color:var(--a-brand-700)}
+
+/* 데스크탑 프레임 */
+.desk-scroll{overflow-x:auto;padding-bottom:6px}
+.desk{width:1040px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--a-bg);color:var(--a-ink);font-size:13px;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.chrome{height:34px;background:#ECECF0;display:flex;align-items:center;gap:6px;padding:0 12px}
+.chrome i{width:10px;height:10px;border-radius:50%;background:#CFCFD6}
+.chrome span{margin-left:12px;font-family:var(--f-mono);font-size:11px;color:#5B5B67;background:#fff;border-radius:6px;padding:2px 10px}
+.dbody{display:grid;grid-template-columns:200px 1fr;min-height:600px}
+.side{background:#17171C;color:#CFCFD6;padding:16px 10px;display:grid;align-content:start;gap:2px}
+.side .logo{color:#fff;font-weight:800;font-size:15px;padding:0 10px 14px;display:flex;align-items:center;gap:6px}
+.side .logo em{font-style:normal;color:var(--a-brand)}
+.side a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:inherit;text-decoration:none;font-size:13px}
+.side a.on{background:#2A2A32;color:#fff;font-weight:700}
+.side a .cnt{margin-left:auto;background:var(--a-brand);color:#fff;border-radius:999px;font-size:10px;padding:0 6px;font-weight:700}
+.main{background:var(--a-muted);display:flex;flex-direction:column;min-width:0}
+.topbar{height:56px;flex:none;background:#fff;border-bottom:1px solid var(--a-line);display:flex;align-items:center;gap:12px;padding:0 20px}
+.topbar h3{font-size:17px}
+.toggle{width:40px;height:22px;border-radius:999px;background:var(--a-success);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff}
+.toggle.off{background:#C9C9D1}
+.toggle.off::after{right:auto;left:3px}
+.content{padding:16px 20px 20px;display:grid;gap:14px;align-content:start}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:#fff;border:1px solid var(--a-line);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
+.kpi small{color:var(--a-ink2);font-size:12px}
+.kpi b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.kpi em{font-style:normal;font-size:11px;color:var(--a-success);font-weight:700}
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:start}
+.col{display:grid;gap:8px}
+.col-h{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px}
+.col-h .n{font-family:var(--f-mono);font-size:12px;color:var(--a-ink3)}
+.oc{background:#fff;border:1px solid var(--a-line);border-radius:12px;padding:12px;display:grid;gap:6px}
+.oc.new{border:2px solid var(--a-brand);box-shadow:0 4px 14px rgba(255,90,54,.15)}
+.oc .no{font-family:var(--f-mono);font-size:11px;color:var(--a-ink3)}
+.oc .items{font-size:12px;color:var(--a-ink2)}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:700;border:1px solid var(--a-line);border-radius:999px;padding:3px 8px}
+.chip.on{background:var(--a-ink);color:#fff;border-color:var(--a-ink)}
+.oc .acts{display:grid;grid-template-columns:1fr 2fr;gap:6px}
+.oc .acts .btn{height:34px;font-size:13px;border-radius:8px}
+.stripe{border-left:3px solid var(--a-info);padding-left:8px}
+.stripe.r{border-color:var(--a-brand)}
+
+/* 상품 등록 */
+.form2{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+.panel{background:#fff;border:1px solid var(--a-line);border-radius:12px;padding:16px;display:grid;gap:12px}
+.panel h4{margin:0;font-size:14px}
+.field{display:grid;gap:4px;font-size:12px;color:var(--a-ink2)}
+.inp{height:36px;border:1px solid var(--a-line);border-radius:10px;display:flex;align-items:center;padding:0 12px;color:var(--a-ink);font-size:13px;background:#fff}
+.inp.ta{height:56px;align-items:flex-start;padding-top:8px}
+.f2{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.upl{display:flex;gap:8px}
+.upl div{width:76px;height:76px;border-radius:10px;border:1.5px dashed #C9C9D1;display:grid;place-items:center;color:var(--a-ink3);font-size:11px;text-align:center}
+.upl div.img{border:0;background:linear-gradient(135deg,#F9C784,#F08A5D)}
+.ogb{border:1px solid var(--a-line);border-radius:10px;overflow:hidden}
+.ogb-h{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--a-muted);font-weight:700;font-size:13px}
+.ogb-r{display:grid;grid-template-columns:1fr 90px 60px;gap:8px;padding:6px 12px;border-top:1px solid var(--a-line);font-size:12px;align-items:center}
+.ogb-r .num{text-align:right;font-variant-numeric:tabular-nums}
+.mini-phone{width:248px;height:470px;border:6px solid #17171C;border-radius:30px;overflow:hidden;position:relative;background:#fff;margin:0 auto}
+
+/* 정산 */
+.split{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;align-items:start}
+.chart svg{width:100%;height:auto;display:block}
+.calc{display:grid;gap:0;font-size:13px}
+.calc div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--a-line);font-variant-numeric:tabular-nums}
+.calc div span:last-child{font-family:var(--f-mono)}
+.calc .minus span:last-child{color:var(--a-danger)}
+.calc .total{border-bottom:0;border-top:2px solid var(--a-ink);margin-top:4px;font-weight:800;font-size:15px}
+.calc .total span:last-child{color:var(--a-brand-700)}
+.dt{width:100%;border-collapse:collapse;font-size:12px}
+.dt th,.dt td{padding:7px 10px;border-bottom:1px solid var(--a-line);text-align:left;white-space:nowrap;color:var(--a-ink)}
+.dt th{color:var(--a-ink2);font-weight:600;background:var(--a-muted)}
+.dt .num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.example{font-family:var(--f-mono);font-size:10px;color:var(--a-ink3);border:1px solid var(--a-line);border-radius:4px;padding:1px 5px;margin-left:auto}
+
+/* 관리자 */
+.admin-grid{display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--a-ink2);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+
+/* 다이어그램 */
+.dg-list{display:grid;gap:16px}
+.dg{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0;display:grid;gap:10px}
+.dg h3{font-size:16px}
+.dg h3 span{font-family:var(--f-mono);font-size:12px;color:var(--accent);margin-right:8px}
+.dg .mm{overflow-x:auto}
+.dg pre.mermaid{margin:0;background:transparent;font-size:12px}
+.note{font-size:13px;color:var(--ink-2);margin:0}
+
+@media (max-width:767px){ body{font-size:14px} .cover{padding-block:32px 20px} }
+@media (prefers-reduced-motion:no-preference){ .rider-pulse{animation:pulse 1.8s ease-out infinite} @keyframes pulse{0%{r:9;opacity:.5}100%{r:22;opacity:0}} }
+</style>
+
+<header class="wrap cover">
+  <div class="eyebrow">dongne-baedal-spec · design/canvas.html · v0.1 · 2026-10-24</div>
+  <h1>동네배달 <b>디자인 캔버스</b></h1>
+  <p>배달의민족의 메뉴 구조와 주문 흐름을 기준으로 고객, 라이더, 계약업체, 관리자 네 역할의 화면과 다이어그램을 한곳에 모은 시안입니다. 색과 폰트, 문구는 동네배달 자체 기준이며 배민의 브랜드 요소는 쓰지 않았습니다.</p>
+  <div class="meta"><span>반응형 ~767 · 768–1199 · 1200~</span><span>Pretendard</span><span>brand #FF5A36</span><span>개발 전 기획안</span></div>
+  <div class="roles">
+    <div class="role"><span class="ch">Flutter 앱 · 웹/PWA</span><h3>고객</h3><p>탐색, 주문, 결제, 라이더 위치 추적, 리뷰</p></div>
+    <div class="role"><span class="ch">Flutter 앱 라이더 모드</span><h3>라이더</h3><p>배차 수락, 픽업, 배달, 위치 전송, 수익</p></div>
+    <div class="role"><span class="ch">웹 /partner</span><h3>계약업체</h3><p>주문 접수, 상품 등록, 가게 설정, 매출과 정산</p></div>
+    <div class="role"><span class="ch">웹 /admin</span><h3>관리자</h3><p>입점 심사, 라이더 관제, 결제 관리, 정산 확정</p></div>
+  </div>
+</header>
+
+<nav class="nav" aria-label="섹션">
+  <ul>
+    <li><a href="#system">디자인 시스템</a></li>
+    <li><a href="#responsive">반응형</a></li>
+    <li><a href="#customer">고객 앱</a></li>
+    <li><a href="#rider">라이더</a></li>
+    <li><a href="#partner">계약업체</a></li>
+    <li><a href="#admin">관리자</a></li>
+    <li><a href="#diagrams">다이어그램</a></li>
+  </ul>
+</nav>
+
+<main class="wrap">
+
+<!-- ───── 디자인 시스템 ───── -->
+<section id="system">
+  <div class="sec-head"><span class="tag">Design system</span><h2>디자인 시스템</h2><p>값은 모두 <span class="mono">tokens/tokens.json</span>에서 나옵니다. 웹과 Flutter가 같은 파일로 테마를 생성합니다.</p></div>
+
+  <div class="sub">브랜드 · 상태 색</div>
+  <div class="scale" aria-label="브랜드 50~900">
+    <i style="background:#FFF1ED"></i><i style="background:#FFDDD3"></i><i style="background:#FFBBA7"></i><i style="background:#FF9677"></i><i style="background:#FF7650"></i><i style="background:#FF5A36"></i><i style="background:#E84521"></i><i style="background:#C2361A"></i><i style="background:#9A2B16"></i><i style="background:#6E1F10"></i>
+  </div>
+  <div class="swatches" style="margin-top:12px">
+    <div class="sw"><i style="background:#FF5A36"></i><div>brand-500<code>#FF5A36 · 버튼, 강조</code></div></div>
+    <div class="sw"><i style="background:#17171C"></i><div>neutral-900<code>#17171C · 본문, 선택 탭</code></div></div>
+    <div class="sw"><i style="background:#1E9E5A"></i><div>success<code>#1E9E5A · 배달완료</code></div></div>
+    <div class="sw"><i style="background:#F5A524"></i><div>warning<code>#F5A524 · 신규 주문</code></div></div>
+    <div class="sw"><i style="background:#E5484D"></i><div>danger<code>#E5484D · 취소, 공제</code></div></div>
+    <div class="sw"><i style="background:#2F7DE1"></i><div>info<code>#2F7DE1 · 조리중, 배달지</code></div></div>
+  </div>
+
+  <div class="sub">글자 크기 (px, 구간별)</div>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>역할</th><th class="num">모바일 ~767</th><th class="num">태블릿 768–1199</th><th class="num">데스크탑 1200~</th><th>쓰임</th></tr></thead>
+    <tbody>
+      <tr><td><b style="font-size:20px">display</b></td><td class="num">28</td><td class="num">32</td><td class="num">40</td><td>홈 인사말, 대시보드 큰 숫자</td></tr>
+      <tr><td><b style="font-size:17px">title</b></td><td class="num">20</td><td class="num">22</td><td class="num">24</td><td>화면 제목, 가게 이름</td></tr>
+      <tr><td><b>subtitle</b></td><td class="num">17</td><td class="num">18</td><td class="num">20</td><td>섹션 제목, 메뉴 이름</td></tr>
+      <tr><td>body</td><td class="num">15</td><td class="num">16</td><td class="num">16</td><td>본문, 리스트 (라이더 앱은 17)</td></tr>
+      <tr><td><small>caption</small></td><td class="num">12</td><td class="num">13</td><td class="num">14</td><td>평점·배달시간 같은 메타 정보</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="sub">핵심 컴포넌트</div>
+  <div class="comp-grid">
+    <div class="comp"><h4>StoreCard · 가게 카드</h4><div class="stage">
+      <div class="thumb" style="border-radius:12px"></div>
+      <div style="display:grid;gap:4px;margin-top:8px"><div class="row"><span class="sname">신갈 바삭치킨</span><span class="badge">쿠폰</span></div>
+      <div class="smeta"><span class="star">★ 4.8</span><span>(1,203)</span><span>·</span><span>25~35분</span><span>·</span><span>배달팁 0~3,000원</span></div></div>
+    </div></div>
+    <div class="comp"><h4>DeliveryInfoBar · 배달정보 바</h4><div class="stage" style="padding:0">
+      <div class="dinfo" style="margin:14px"><div>최소주문<b>15,000원</b></div><div>배달팁<b>0~3,000원</b></div><div>예상시간<b>25~35분</b></div></div>
+    </div></div>
+    <div class="comp"><h4>OrderStatusChip · 주문 상태</h4><div class="stage"><div class="chips" style="gap:6px">
+      <span class="badge warn">신규</span><span class="badge info">조리중</span><span class="badge">픽업대기</span><span class="badge">배달중</span><span class="badge ok">배달완료</span><span class="badge red">취소</span></div>
+      <p style="margin:10px 0 0;font-size:12px;color:#5B5B67">상태는 색, 아이콘, 텍스트로 함께 표시합니다.</p></div></div>
+    <div class="comp"><h4>MinOrderProgress · 최소주문 진행바</h4><div class="stage" style="display:grid;gap:6px">
+      <div class="progress"><i style="width:80%"></i></div><span style="font-size:12px"><b style="color:#C2361A">3,000원</b> 더 담으면 주문할 수 있어요</span></div></div>
+  </div>
+</section>
+
+<!-- ───── 반응형 ───── -->
+<section id="responsive">
+  <div class="sec-head"><span class="tag">Responsive</span><h2>반응형 3구간</h2><p>같은 화면이 구간마다 어떻게 바뀌는지 보여 주는 와이어프레임입니다. 고객 홈 기준입니다.</p></div>
+  <div class="bp">
+    <div class="bp-card"><span class="rng">~767px</span><h4>모바일</h4>
+      <div class="wire"><div class="bar br" style="width:55%"></div><div class="bar"></div><div class="g" style="grid-template-columns:1fr"><div class="c"></div><div class="c"></div></div><div class="tabs"></div></div>
+      <ul><li>가게 카드 1열</li><li>하단 5탭</li><li>여백 16, body 15px</li></ul></div>
+    <div class="bp-card"><span class="rng">768–1199px</span><h4>태블릿</h4>
+      <div class="wire"><div class="bar br" style="width:40%"></div><div class="bar"></div><div class="g" style="grid-template-columns:1fr 1fr"><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div></div><div class="tabs"></div></div>
+      <ul><li>가게 카드 2열</li><li>상단 검색 확장 + 하단 탭</li><li>여백 24, body 16px</li></ul></div>
+    <div class="bp-card"><span class="rng">1200px~</span><h4>데스크탑</h4>
+      <div class="wire" style="grid-template-columns:52px 1fr;grid-template-rows:14px 1fr"><div class="bar br" style="grid-column:1/3;width:30%"></div><div style="background:#D9D9DF;border-radius:6px"></div><div class="g" style="grid-template-columns:1fr 1fr 1fr;align-content:start"><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div></div></div>
+      <ul><li>최대 폭 1120 중앙, 카드 3열</li><li>상단 헤더 + 좌측 카테고리 사이드바</li><li>여백 32, body 16px</li></ul></div>
+  </div>
+  <div class="tbl-wrap" style="margin-top:14px"><table>
+    <thead><tr><th>역할 화면</th><th>모바일</th><th>태블릿</th><th>데스크탑</th></tr></thead>
+    <tbody>
+      <tr><td>고객</td><td>1열, 하단 5탭</td><td>2열, 하단 탭</td><td>3열, 좌측 카테고리</td></tr>
+      <tr><td>계약업체 /partner</td><td>하단 탭 4개, 주문 카드 리스트</td><td>아이콘 레일 72 + 칸반 2열</td><td>사이드바 200 + KPI 4열 + 칸반 4열</td></tr>
+      <tr><td>관리자 /admin</td><td>조회 전용</td><td>아이콘 레일 + 표</td><td>사이드바 + 지도/표 분할</td></tr>
+      <tr><td>라이더</td><td>기준 화면, 버튼 56 이상</td><td>가로 모드 지도</td><td>대상 아님</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ───── 고객 앱 ───── -->
+<section id="customer">
+  <div class="sec-head"><span class="tag">Customer app</span><h2>고객 앱</h2><p>홈에서 결제, 배달 추적까지 이어지는 주요 화면입니다. 화면 번호는 <span class="mono">docs/03-design-structure.md</span>와 같습니다.</p></div>
+  <div class="screens">
+
+    <!-- C03 홈 -->
+    <div class="shot">
+      <div class="phone"><div class="scr">
+        <div class="sb"><span>9:41</span><span>LTE ▮▮▮</span></div>
+        <div class="body">
+          <div class="row sp px" style="padding-top:4px"><span class="addr">신갈동 우리집 <i data-lucide="chevron-down" class="ic ic-s"></i></span><span class="row" style="gap:14px"><i data-lucide="bell" class="ic"></i><i data-lucide="shopping-cart" class="ic"></i></span></div>
+          <div class="search"><i data-lucide="search" class="ic ic-s"></i>먹고 싶은 메뉴, 가게 검색</div>
+          <div class="svc"><span class="on">배달</span><span>가게배달</span><span>포장</span><span>장보기</span></div>
+          <div class="cats">
+            <div class="cat"><i><svg data-lucide="drumstick" class="ic"></svg></i>치킨</div>
+            <div class="cat"><i><svg data-lucide="pizza" class="ic"></svg></i>피자</div>
+            <div class="cat"><i><svg data-lucide="soup" class="ic"></svg></i>한식</div>
+            <div class="cat"><i><svg data-lucide="utensils" class="ic"></svg></i>중식</div>
+            <div class="cat"><i><svg data-lucide="sandwich" class="ic"></svg></i>분식</div>
+            <div class="cat"><i><svg data-lucide="moon" class="ic"></svg></i>야식</div>
+            <div class="cat"><i><svg data-lucide="coffee" class="ic"></svg></i>카페</div>
+            <div class="cat"><i><svg data-lucide="beef" class="ic"></svg></i>족발</div>
+            <div class="cat"><i><svg data-lucide="fish" class="ic"></svg></i>일식</div>
+            <div class="cat"><i><svg data-lucide="cake-slice" class="ic"></svg></i>디저트</div>
+          </div>
+          <div class="banner"><small>신규 가입 혜택</small><b>첫 주문 3,000원 할인</b></div>
+          <div class="h-sec">신갈동 인기 가게</div>
+          <div class="card"><div class="thumb"></div><div class="row"><span class="sname">신갈 바삭치킨</span><span class="badge">쿠폰</span></div><div class="smeta"><span class="star">★ 4.8</span><span>(1,203)</span><span>· 25~35분 · 배달팁 0~3,000원</span></div></div>
+        </div>
+        <div class="tabbar"><span class="on"><i data-lucide="home" class="ic"></i>홈</span><span><i data-lucide="search" class="ic"></i>검색</span><span><i data-lucide="heart" class="ic"></i>찜</span><span><i data-lucide="receipt" class="ic"></i>주문내역</span><span><i data-lucide="user" class="ic"></i>마이</span></div>
+      </div></div>
+      <div class="cap"><span class="id">C03</span><b>홈</b><ul><li>상단 서비스 탭: 배달 · 가게배달 · 포장 · 장보기</li><li>카테고리 10개 그리드, 탭하면 가게 리스트</li><li>배달 가능 반경 안의 가게만 노출</li></ul></div>
+    </div>
+
+    <!-- C06 가게 상세 -->
+    <div class="shot">
+      <div class="phone"><div class="scr">
+        <div class="body">
+          <div class="cover-img"></div>
+          <div class="store-head"><h3>신갈 바삭치킨</h3><div class="smeta" style="justify-content:center"><span class="star">★ 4.8</span><span>리뷰 1,203 · 사장님댓글 980</span></div><span class="badge" style="justify-self:center">3,000원 쿠폰 받기</span></div>
+          <div class="dinfo"><div>최소주문<b>15,000원</b></div><div>배달팁<b>0~3,000원</b></div><div>예상시간<b>25~35분</b></div></div>
+          <div class="mtabs"><span class="on">인기 메뉴</span><span>후라이드</span><span>양념</span><span>사이드</span><span>정보·리뷰</span></div>
+          <div class="mrow"><div><span class="row"><b>바삭 후라이드</b><span class="badge">인기</span></span><small>매일 새 기름에 튀긴 순살 · 뼈 선택</small><b>19,000원</b></div><div class="pic"></div></div>
+          <div class="mrow"><div><b>반반 치킨</b><small>후라이드 반, 양념 반</small><b>20,000원</b></div><div class="pic" style="background:linear-gradient(135deg,#F6A16B,#C9522A)"></div></div>
+          <div class="mrow"><div><span class="row"><b>치즈볼 5개</b><span class="badge gray">품절</span></span><small>모짜렐라 치즈볼</small><b style="color:#7C7C89">4,000원</b></div><div class="pic" style="background:linear-gradient(135deg,#F7E09A,#E9B949);opacity:.5"></div></div>
+          <div class="fixed-b"><div class="btn"><span style="background:#fff;color:#E84521;border-radius:999px;width:20px;height:20px;display:grid;place-items:center;font-size:12px">2</span>장바구니 보기 · 39,000원</div></div>
+        </div>
+      </div></div>
+      <div class="cap"><span class="id">C06</span><b>가게 상세</b><ul><li>배달정보 바 3칸: 최소주문 · 배달팁 · 예상시간</li><li>메뉴 카테고리 탭은 스크롤 시 상단 고정</li><li>품절 메뉴는 흐리게 + 품절 배지 (업주 토글 즉시 반영)</li></ul></div>
+    </div>
+
+    <!-- C07 메뉴 옵션 -->
+    <div class="shot">
+      <div class="phone"><div class="scr">
+        <div class="body">
+          <div class="cover-img" style="height:200px"></div><div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="px" style="display:grid;gap:2px;padding-bottom:12px"><b style="font-size:17px">바삭 후라이드</b><small style="color:#5B5B67">매일 새 기름에 튀긴 치킨</small><b style="font-size:16px">19,000원</b></div>
+            <div class="og"><div class="og-h">부위 선택 <span class="badge">필수</span></div>
+              <div class="opt"><span class="r on"></span><span>뼈</span><span>+0원</span></div>
+              <div class="opt"><span class="r"></span><span>순살</span><span>+2,000원</span></div></div>
+            <div class="og"><div class="og-h">추가 선택 <span class="badge gray">최대 2개</span></div>
+              <div class="opt"><span class="cb on"></span><span>치즈 시즈닝</span><span>+1,500원</span></div>
+              <div class="opt"><span class="cb"></span><span>콜라 1.25L</span><span>+2,500원</span></div></div>
+            <div class="og" style="padding-bottom:84px"><div class="row sp"><b>수량</b><div class="stepper"><span>−</span><span>1</span><span>+</span></div></div></div>
+            <div class="fixed-b"><div class="btn">20,500원 담기</div></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap"><span class="id">C07</span><b>메뉴 옵션 시트</b><ul><li>옵션 그룹마다 필수 · 최대 선택 수 배지</li><li>단일은 라디오, 다중은 체크박스</li><li>담기 버튼에 옵션 포함 금액 실시간 표시</li></ul></div>
+    </div>
+
+    <!-- C08 장바구니 -->
+    <div class="shot">
+      <div class="phone"><div class="scr">
+        <div class="sb"><span>9:41</span><span>LTE ▮▮▮</span></div>
+        <div class="body">
+          <div class="row px" style="height:44px;font-weight:800;font-size:16px">장바구니</div>
+          <div class="px" style="display:grid;gap:10px"><div class="seg"><span class="on">배달</span><span>가게배달</span><span>포장</span></div></div>
+          <div class="px" style="padding-top:14px;display:grid;gap:10px">
+            <b>신갈 바삭치킨</b>
+            <div class="row" style="align-items:flex-start"><div style="flex:1;display:grid;gap:2px"><b style="font-size:13px">바삭 후라이드</b><small style="color:#5B5B67">뼈 · 치즈 시즈닝</small><b>20,500원</b></div><div class="stepper"><span>−</span><span>1</span><span>+</span></div></div>
+            <div class="row" style="align-items:flex-start"><div style="flex:1;display:grid;gap:2px"><b style="font-size:13px">반반 치킨</b><small style="color:#5B5B67">기본</small><b>20,000원</b></div><div class="stepper"><span>−</span><span>1</span><span>+</span></div></div>
+          </div>
+          <div class="divider" style="margin-top:14px"></div>
+          <div class="px sum" style="padding-top:12px"><div><span>메뉴 금액</span><span>40,500원</span></div><div><span>배달팁</span><span>2,000원</span></div><div><span>쿠폰</span><span style="color:#E5484D">−3,000원</span></div><div class="tot"><span>결제 예정 금액</span><span>39,500원</span></div></div>
+          <div class="fixed-b" style="display:grid;gap:8px"><div class="progress"><i style="width:100%"></i></div><small style="color:#15763F;font-size:11px;font-weight:700">최소주문금액을 채웠어요</small><div class="btn">39,500원 주문하기</div></div>
+        </div>
+      </div></div>
+      <div class="cap"><span class="id">C08</span><b>장바구니</b><ul><li>배달 · 가게배달 · 포장을 여기서 전환</li><li>최소주문 진행바, 미달 시 버튼 비활성</li><li>금액은 서버에서 다시 계산해 확정</li></ul></div>
+    </div>
+
+    <!-- C10 주문 현황 -->
+    <div class="shot">
+      <div class="phone"><div class="scr">
+        <div class="body">
+          <div class="map" style="height:300px" data-map="track"></div>
+          <div class="sheet" style="max-height:none;top:276px;box-shadow:0 -4px 24px rgba(23,23,28,.12)">
+            <div class="grab"></div>
+            <div class="px" style="display:grid;gap:12px">
+              <div class="eta"><small style="color:#5B5B67">라이더가 출발했어요</small><b>12분 뒤 도착해요</b><small style="color:#7C7C89">도착 예정 오후 7:42 · 1.4km</small></div>
+              <div class="tl"><span class="done"><i></i>접수</span><span class="done"><i></i>조리중</span><span class="done"><i></i>픽업</span><span class="now"><i></i>배달중</span><span><i></i>완료</span></div>
+              <div class="person"><span class="avatar"><i data-lucide="bike" class="ic"></i></span><div style="display:grid"><b style="font-size:13px">라이더 김**</b><small style="color:#5B5B67">오토바이 · 안심번호로 연결</small></div><span class="round-btn"><i data-lucide="phone" class="ic ic-s"></i></span></div>
+              <div class="row sp" style="font-size:12px;color:#5B5B67"><span>신갈 바삭치킨 · 메뉴 2개</span><span>39,500원</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap"><span class="id">C10</span><b>주문 현황 · 라이더 위치</b><ul><li>지도 55% + 드래그 바텀시트</li><li>라이더 마커는 3~5초마다 갱신, 이동은 보간 처리</li><li>픽업 전에는 가게 방향, 픽업 후에는 집 방향 경로</li><li>위치가 30초 이상 끊기면 마커 반투명</li></ul></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───── 라이더 ───── -->
+<section id="rider">
+  <div class="sec-head"><span class="tag">Rider app</span><h2>라이더 앱</h2><p>이동 중에 쓰는 화면이라 버튼을 56px 이상으로 키우고 글자도 한 단계 크게 씁니다. 운행을 시작하면 위치 전송이 켜집니다.</p></div>
+  <div class="screens">
+
+    <!-- R02 배차 요청 -->
+    <div class="shot">
+      <div class="phone"><div class="scr">
+        <div class="sb"><span>9:41</span><span>운행 중 ●</span></div>
+        <div class="body">
+          <div class="map" style="position:absolute;inset:0" data-map="offer"></div>
+          <div class="offer">
+            <div class="row sp"><div style="display:grid"><small style="color:#5B5B67;font-size:12px">새 배차 요청</small><b style="font-size:22px;letter-spacing:-.01em">예상 3,800원</b></div>
+              <svg class="timer" viewBox="0 0 52 52" aria-label="남은 시간 22초"><circle cx="26" cy="26" r="22" fill="none" stroke="#F1F1F3" stroke-width="5"/><circle cx="26" cy="26" r="22" fill="none" stroke="#FF5A36" stroke-width="5" stroke-dasharray="138.2" stroke-dashoffset="34.5" transform="rotate(-90 26 26)" stroke-linecap="round"/><text x="26" y="31" text-anchor="middle" font-size="15" font-weight="800" fill="#17171C">22</text></svg></div>
+            <div class="route"><span class="dot"></span><b>신갈 바삭치킨</b><span style="color:#5B5B67">0.8km</span><span class="ln"></span><span></span><span></span><span class="dot h"></span><b>신갈동 ○○아파트</b><span style="color:#5B5B67">1.4km</span></div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px"><div class="btn ghost big">거절</div><div class="btn big">수락</div></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap"><span class="id">R02</span><b>배차 요청</b><ul><li>30초 원형 타이머, 시간이 지나면 다음 라이더로</li><li>가게까지, 고객까지 거리와 예상 수입을 한 카드에</li><li>가게 반경 2km 안의 대기 라이더에게 거리순으로 요청</li></ul></div>
+    </div>
+
+    <!-- R03 진행 중 -->
+    <div class="shot">
+      <div class="phone"><div class="scr">
+        <div class="sb"><span>9:41</span><span>위치 전송 중 ●</span></div>
+        <div class="body">
+          <div class="map" style="height:330px" data-map="rider"></div>
+          <div class="sheet" style="max-height:none;top:306px">
+            <div class="grab"></div>
+            <div class="px" style="display:grid;gap:12px">
+              <div class="steps"><span class="done">가게 도착</span><span class="now">픽업</span><span>배달 완료</span></div>
+              <div style="display:grid;gap:2px"><small style="color:#5B5B67">주문번호 <span class="mono">D261024-0417</span></small><b style="font-size:18px">신갈 바삭치킨</b><small style="color:#5B5B67">바삭 후라이드 외 1개 · 요청: 콜라 빼주세요</small></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="btn ghost" style="height:44px"><i data-lucide="navigation" class="ic ic-s"></i>길안내</div><div class="btn ghost" style="height:44px"><i data-lucide="phone" class="ic ic-s"></i>가게 전화</div></div>
+              <div class="btn big">픽업 완료</div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap"><span class="id">R03</span><b>진행 중 배달</b><ul><li>단계 버튼 하나로 상태 변경: 가게 도착 → 픽업 → 배달 완료</li><li>가게 반경 50m 안에 들어오면 「가게 도착」 자동 제안</li><li>상태 변경은 고객 앱과 업주 화면에 즉시 반영</li></ul></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───── 계약업체 ───── -->
+<section id="partner">
+  <div class="sec-head"><span class="tag">Partner dashboard · /partner</span><h2>계약업체 대시보드</h2><p>매장 태블릿과 PC를 기준으로 설계했습니다. 아래는 데스크탑(1200px 이상) 화면입니다. 좁은 화면에서는 프레임 안에서 가로로 스크롤됩니다.</p></div>
+
+  <div class="sub">P02 · 주문 관리</div>
+  <div class="desk-scroll"><div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span>partner.dongnebaedal.kr/orders</span></div>
+    <div class="dbody">
+      <nav class="side" aria-label="업주 메뉴">
+        <div class="logo">동네배달 <em>파트너</em></div>
+        <a href="#partner"><i data-lucide="layout-dashboard" class="ic ic-s"></i>홈</a>
+        <a href="#partner" class="on"><i data-lucide="clipboard-list" class="ic ic-s"></i>주문 관리<span class="cnt">2</span></a>
+        <a href="#partner"><i data-lucide="package" class="ic ic-s"></i>상품 관리</a>
+        <a href="#partner"><i data-lucide="store" class="ic ic-s"></i>가게 관리</a>
+        <a href="#partner"><i data-lucide="wallet" class="ic ic-s"></i>매출·정산</a>
+        <a href="#partner"><i data-lucide="message-square" class="ic ic-s"></i>리뷰 관리</a>
+        <a href="#partner"><i data-lucide="settings" class="ic ic-s"></i>계정·계약</a>
+      </nav>
+      <div class="main">
+        <div class="topbar"><h3>신갈 바삭치킨</h3><span class="toggle"></span><b style="color:#15763F;font-size:13px">영업중</b><span style="margin-left:auto;color:#5B5B67;font-size:12px">신규 주문 알림음 켜짐</span></div>
+        <div class="content">
+          <div class="kanban">
+            <div class="col"><div class="col-h"><span class="badge warn">신규</span><span class="n">2</span></div>
+              <div class="oc new"><div class="row sp"><b>배달 · 39,500원</b><span class="no">0421</span></div><div class="items">바삭 후라이드(뼈, 치즈 시즈닝) 1<br>반반 치킨 1</div><div class="items stripe r">요청: 콜라 빼주세요</div>
+                <div class="chips"><span class="chip">10분</span><span class="chip">20분</span><span class="chip on">30분</span><span class="chip">40분</span><span class="chip">50분</span></div>
+                <div class="acts"><div class="btn ghost">거절</div><div class="btn">30분 접수</div></div></div>
+              <div class="oc"><div class="row sp"><b>포장 · 19,000원</b><span class="no">0422</span></div><div class="items">바삭 후라이드(순살) 1</div><div class="acts"><div class="btn ghost">거절</div><div class="btn">접수</div></div></div>
+            </div>
+            <div class="col"><div class="col-h"><span class="badge info">조리중</span><span class="n">3</span></div>
+              <div class="oc"><div class="row sp"><b>배달 · 22,000원</b><span class="no">0418</span></div><div class="items">양념 치킨 1</div><div class="row sp" style="font-size:12px"><span>남은 시간</span><b style="color:#C2361A">8분</b></div><div class="btn dark" style="height:34px;font-size:13px;border-radius:8px">조리 완료</div></div>
+              <div class="oc"><div class="row sp"><b>가게배달 · 41,000원</b><span class="no">0419</span></div><div class="items">반반 치킨 2</div><div class="row sp" style="font-size:12px"><span>남은 시간</span><b>17분</b></div></div>
+              <div class="oc"><div class="row sp"><b>배달 · 18,500원</b><span class="no">0420</span></div><div class="items">후라이드 1</div><div class="row sp" style="font-size:12px"><span>남은 시간</span><b>24분</b></div></div>
+            </div>
+            <div class="col"><div class="col-h"><span class="badge">픽업대기·배달중</span><span class="n">2</span></div>
+              <div class="oc"><div class="row sp"><b>배달 · 39,000원</b><span class="no">0417</span></div><div class="items stripe">라이더 김** · 가게 도착까지 2분</div></div>
+              <div class="oc"><div class="row sp"><b>배달 · 27,000원</b><span class="no">0415</span></div><div class="items stripe">배달중 · 도착 예정 7:38</div></div>
+            </div>
+            <div class="col"><div class="col-h"><span class="badge ok">완료</span><span class="n">18</span></div>
+              <div class="oc" style="opacity:.75"><div class="row sp"><b>배달 · 21,000원</b><span class="no">0414</span></div><div class="items">7:12 배달 완료</div></div>
+              <div class="oc" style="opacity:.75"><div class="row sp"><b>포장 · 19,000원</b><span class="no">0413</span></div><div class="items">7:05 수령 완료</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="cap" style="margin-top:12px"><ul><li>신규 주문은 굵은 테두리 + 알림음, 조리시간 칩 하나 고르고 접수</li><li>조리 완료를 누르면 배차 요청이 시작되고, 라이더 도착 예정이 카드에 표시</li><li>태블릿은 칸반 2열, 모바일은 상태 탭 + 카드 리스트로 바뀝니다</li></ul></div>
+
+  <div class="sub">P04 · 상품 등록</div>
+  <div class="desk-scroll"><div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span>partner.dongnebaedal.kr/menus/new</span></div>
+    <div class="dbody">
+      <nav class="side" aria-label="업주 메뉴">
+        <div class="logo">동네배달 <em>파트너</em></div>
+        <a href="#partner"><i data-lucide="layout-dashboard" class="ic ic-s"></i>홈</a>
+        <a href="#partner"><i data-lucide="clipboard-list" class="ic ic-s"></i>주문 관리</a>
+        <a href="#partner" class="on"><i data-lucide="package" class="ic ic-s"></i>상품 관리</a>
+        <a href="#partner"><i data-lucide="store" class="ic ic-s"></i>가게 관리</a>
+        <a href="#partner"><i data-lucide="wallet" class="ic ic-s"></i>매출·정산</a>
+        <a href="#partner"><i data-lucide="message-square" class="ic ic-s"></i>리뷰 관리</a>
+        <a href="#partner"><i data-lucide="settings" class="ic ic-s"></i>계정·계약</a>
+      </nav>
+      <div class="main">
+        <div class="topbar"><h3>메뉴 추가</h3><span style="margin-left:auto;display:flex;gap:8px"><span class="btn ghost" style="height:36px;padding:0 14px;font-size:13px">임시저장</span><span class="btn" style="height:36px;padding:0 14px;font-size:13px">저장하고 노출</span></span></div>
+        <div class="content">
+          <div class="form2">
+            <div style="display:grid;gap:12px">
+              <div class="panel"><h4>기본 정보</h4>
+                <div class="f2"><label class="field">메뉴 이름<span class="inp">바삭 후라이드</span></label><label class="field">가격<span class="inp">19,000원</span></label><label class="field">메뉴 카테고리<span class="inp">후라이드 ▾</span></label></div>
+                <label class="field">설명<span class="inp ta">매일 새 기름에 튀긴 치킨</span></label>
+                <div class="row" style="gap:16px;font-size:12px"><span class="row"><span class="toggle"></span>인기 메뉴 표시</span><span class="row"><span class="toggle off"></span>품절</span></div>
+              </div>
+              <div class="panel"><h4>사진</h4><div class="upl"><div class="img"></div><div><i data-lucide="image-plus" class="ic"></i></div></div><small style="color:#7C7C89;font-size:11px">1:1과 16:9로 자동 잘라서 저장합니다</small></div>
+              <div class="panel"><div class="row sp"><h4>옵션 그룹</h4><span class="badge gray">+ 그룹 추가</span></div>
+                <div class="ogb"><div class="ogb-h">부위 선택 <span class="badge">필수</span><span style="margin-left:auto;font-weight:400;font-size:12px;color:#5B5B67">최소 1 · 최대 1</span></div>
+                  <div class="ogb-r"><span>뼈</span><span class="num">+0원</span><span class="badge ok">판매</span></div>
+                  <div class="ogb-r"><span>순살</span><span class="num">+2,000원</span><span class="badge ok">판매</span></div></div>
+                <div class="ogb"><div class="ogb-h">추가 선택 <span class="badge gray">선택</span><span style="margin-left:auto;font-weight:400;font-size:12px;color:#5B5B67">최소 0 · 최대 2</span></div>
+                  <div class="ogb-r"><span>치즈 시즈닝</span><span class="num">+1,500원</span><span class="badge ok">판매</span></div>
+                  <div class="ogb-r"><span>콜라 1.25L</span><span class="num">+2,500원</span><span class="badge gray">품절</span></div></div>
+              </div>
+            </div>
+            <div class="panel" style="justify-items:center"><h4 style="justify-self:start">고객 화면 미리보기</h4>
+              <div class="mini-phone"><div class="scr" style="font-size:12px">
+                <div class="cover-img" style="height:130px"></div>
+                <div class="px" style="display:grid;gap:2px;padding-block:10px"><b style="font-size:15px">바삭 후라이드</b><small style="color:#5B5B67">매일 새 기름에 튀긴 치킨</small><b>19,000원</b></div>
+                <div class="og"><div class="og-h">부위 선택 <span class="badge">필수</span></div><div class="opt"><span class="r on"></span><span>뼈</span><span>+0원</span></div><div class="opt"><span class="r"></span><span>순살</span><span>+2,000원</span></div></div>
+                <div class="og"><div class="og-h">추가 선택 <span class="badge gray">최대 2개</span></div><div class="opt"><span class="cb"></span><span>치즈 시즈닝</span><span>+1,500원</span></div></div>
+              </div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="cap" style="margin-top:12px"><ul><li>왼쪽에서 입력하면 오른쪽 미리보기가 즉시 바뀝니다</li><li>옵션 그룹은 필수 여부와 최소·최대 선택 수를 함께 정합니다</li><li>품절 토글은 저장 없이 바로 고객 화면에 반영</li></ul></div>
+
+  <div class="sub">P06 · 매출·정산</div>
+  <div class="desk-scroll"><div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span>partner.dongnebaedal.kr/settlement</span></div>
+    <div class="dbody">
+      <nav class="side" aria-label="업주 메뉴">
+        <div class="logo">동네배달 <em>파트너</em></div>
+        <a href="#partner"><i data-lucide="layout-dashboard" class="ic ic-s"></i>홈</a>
+        <a href="#partner"><i data-lucide="clipboard-list" class="ic ic-s"></i>주문 관리</a>
+        <a href="#partner"><i data-lucide="package" class="ic ic-s"></i>상품 관리</a>
+        <a href="#partner"><i data-lucide="store" class="ic ic-s"></i>가게 관리</a>
+        <a href="#partner" class="on"><i data-lucide="wallet" class="ic ic-s"></i>매출·정산</a>
+        <a href="#partner"><i data-lucide="message-square" class="ic ic-s"></i>리뷰 관리</a>
+        <a href="#partner"><i data-lucide="settings" class="ic ic-s"></i>계정·계약</a>
+      </nav>
+      <div class="main">
+        <div class="topbar"><h3>매출·정산</h3><span class="seg" style="width:220px;margin-left:16px"><span>오늘</span><span class="on">이번 주</span><span>이번 달</span></span><span class="example">예시 데이터</span></div>
+        <div class="content">
+          <div class="kpis">
+            <div class="kpi"><small>주간 매출</small><b>3,240,000원</b><em>지난주보다 +8.4%</em></div>
+            <div class="kpi"><small>주문 수</small><b>142건</b><em>+11건</em></div>
+            <div class="kpi"><small>객단가</small><b>22,817원</b><small>취소율 1.4%</small></div>
+            <div class="kpi" style="border-color:#FFBBA7;background:#FFF8F5"><small>정산 예정액 · 10/30 지급</small><b style="color:#C2361A">2,507,480원</b><small>매출의 77.4%</small></div>
+          </div>
+          <div class="split">
+            <div class="panel chart"><div class="row sp"><h4>일별 매출</h4><small style="color:#7C7C89">10/17 – 10/23</small></div><div id="salesChart"></div></div>
+            <div class="panel"><h4>정산 계산</h4>
+              <div class="calc">
+                <div><span>주문금액 (142건)</span><span>3,240,000</span></div>
+                <div class="minus"><span>중개수수료 9.8%</span><span>−317,520</span></div>
+                <div class="minus"><span>결제수수료 3.0%</span><span>−97,200</span></div>
+                <div class="minus"><span>배달비 업주부담</span><span>−269,800</span></div>
+                <div class="minus"><span>업주부담 쿠폰</span><span>−48,000</span></div>
+                <div class="total"><span>정산 예정액</span><span>2,507,480</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="padding:0;overflow:hidden"><table class="dt"><thead><tr><th>정산 기간</th><th class="num">매출</th><th class="num">공제 합계</th><th class="num">지급액</th><th>상태</th><th>지급일</th></tr></thead><tbody>
+            <tr><td>10/17 – 10/23</td><td class="num">3,240,000</td><td class="num">732,520</td><td class="num">2,507,480</td><td><span class="badge warn">정산 대기</span></td><td>10/30 예정</td></tr>
+            <tr><td>10/10 – 10/16</td><td class="num">2,988,000</td><td class="num">671,300</td><td class="num">2,316,700</td><td><span class="badge ok">지급 완료</span></td><td>10/23</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="cap" style="margin-top:12px"><ul><li>정산 예정액 옆에 공제 항목을 그대로 펼쳐 보여 줍니다</li><li>수수료율은 계약에서 정한 값만 읽기 전용으로 표시</li><li>숫자는 예시이며, 실제 수수료율과 정산 주기는 계약 조건으로 정합니다</li></ul></div>
+</section>
+
+<!-- ───── 관리자 ───── -->
+<section id="admin">
+  <div class="sec-head"><span class="tag">Admin dashboard · /admin</span><h2>관리자 대시보드</h2><p>본사 운영 화면입니다. 라이더 관제와 정산 확정이 핵심입니다.</p></div>
+  <div class="sub">A04 · 라이더 관제</div>
+  <div class="desk-scroll"><div class="desk">
+    <div class="chrome"><i></i><i></i><i></i><span>admin.dongnebaedal.kr/riders</span></div>
+    <div class="dbody">
+      <nav class="side" aria-label="관리자 메뉴">
+        <div class="logo">동네배달 <em>관리자</em></div>
+        <a href="#admin"><i data-lucide="layout-dashboard" class="ic ic-s"></i>관제 홈</a>
+        <a href="#admin"><i data-lucide="store" class="ic ic-s"></i>입점 심사<span class="cnt">4</span></a>
+        <a href="#admin"><i data-lucide="clipboard-list" class="ic ic-s"></i>주문·결제</a>
+        <a href="#admin" class="on"><i data-lucide="bike" class="ic ic-s"></i>라이더 관제</a>
+        <a href="#admin"><i data-lucide="wallet" class="ic ic-s"></i>정산 관리</a>
+        <a href="#admin"><i data-lucide="settings" class="ic ic-s"></i>쿠폰·배너</a>
+      </nav>
+      <div class="main">
+        <div class="topbar"><h3>라이더 관제 · 기흥구</h3><span class="legend" style="margin-left:auto"><span><i style="background:#1E9E5A"></i>대기 14</span><span><i style="background:#FF5A36"></i>배달중 23</span><span><i style="background:#2F7DE1"></i>가게로 이동 9</span></span></div>
+        <div class="content">
+          <div class="admin-grid">
+            <div class="map" style="height:500px;border-radius:12px;border:1px solid var(--a-line)" data-map="admin"></div>
+            <div style="display:grid;gap:10px">
+              <div class="panel"><div class="row sp"><h4>미배차 주문</h4><span class="badge red">3건</span></div>
+                <div class="oc" style="gap:4px"><div class="row sp"><b>신갈 바삭치킨</b><span class="badge red">대기 4분</span></div><small style="color:#5B5B67">반경 2km 대기 라이더 0명 → 3km로 확대</small><div class="btn dark" style="height:32px;font-size:12px;border-radius:8px">수동 배차</div></div>
+                <div class="oc" style="gap:4px"><div class="row sp"><b>구갈 국수집</b><span class="badge warn">대기 2분</span></div><small style="color:#5B5B67">2순위 라이더에게 요청 중</small></div>
+                <div class="oc" style="gap:4px"><div class="row sp"><b>상갈 피자</b><span class="badge warn">대기 1분</span></div><small style="color:#5B5B67">1순위 라이더에게 요청 중</small></div>
+              </div>
+              <div class="panel"><h4>지금 기흥구</h4><div class="sum"><div><span>평균 배달 시간</span><b>28분</b></div><div><span>지연 주문 (40분 이상)</span><b style="color:#E5484D">2건</b></div><div><span>운행 라이더</span><b>46명</b></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="cap" style="margin-top:12px"><ul><li>라이더 마커 색은 상태, 지도와 미배차 리스트가 함께 움직입니다</li><li>자동 배차가 실패한 주문만 오른쪽에 올라와 수동 배차</li><li>A05 정산 관리는 기간별 정산 배치를 대기 → 검토 → 확정 → 지급 순으로 처리</li></ul></div>
+</section>
+
+<!-- ───── 다이어그램 ───── -->
+<section id="diagrams">
+  <div class="sec-head"><span class="tag">Diagrams</span><h2>다이어그램 구조도</h2><p><span class="mono">docs/02-diagrams.md</span>와 같은 내용입니다. 단계 표시: [1] MVP · [2] 2차 · [3] 3차.</p></div>
+  <div class="dg-list">
+    <div class="dg"><h3><span>01</span>전체 시스템 구조</h3><div class="mm"><pre class="mermaid">flowchart LR
+  subgraph SPEC["dongne-baedal-spec (원본)"]
+    T[tokens.json]
+    D[docs · 다이어그램]
+    C[design/canvas.html]
+    S[supabase 스키마]
+  end
+
+  subgraph WEB["dongne-baedal-web (Next.js)"]
+    W1[고객 웹 · PWA]
+    W2["계약업체 대시보드 /partner"]
+    W3["관리자 대시보드 /admin"]
+  end
+
+  subgraph APP["dongne-baedal-flutter"]
+    A1[고객 앱]
+    A2[라이더 앱 모드]
+  end
+
+  subgraph SB["Supabase"]
+    AUTH[Auth]
+    DB[(Postgres + PostGIS)]
+    RT[Realtime]
+    ST[Storage 이미지]
+    EF[Edge Functions]
+  end
+
+  PG[PG사 결제]
+  MAP[지도 · 주소 API]
+  PUSH[FCM 푸시]
+
+  SPEC -.-&gt;|서브모듈 spec/| WEB
+  SPEC -.-&gt;|서브모듈 spec/| APP
+  W1 &amp; W2 &amp; W3 &amp; A1 &amp; A2 --&gt; AUTH
+  W1 &amp; W2 &amp; W3 &amp; A1 &amp; A2 --&gt; DB
+  A1 &amp; W1 &amp; W2 &lt;--&gt; RT
+  A2 -- 위치 전송 --&gt; RT
+  W2 --&gt; ST
+  EF &lt;--&gt; PG
+  A1 &amp; A2 &amp; W1 --&gt; MAP
+  EF --&gt; PUSH
+</pre></div></div>
+    <div class="dg"><h3><span>02</span>고객 앱 메뉴 구조 (IA)</h3><div class="mm"><pre class="mermaid">flowchart TD
+  ROOT((고객 앱)) --&gt; HOME[홈]
+  ROOT --&gt; SEARCH[검색]
+  ROOT --&gt; FAV[찜]
+  ROOT --&gt; ORD[주문내역]
+  ROOT --&gt; MY[마이]
+
+  HOME --&gt; ADDRBAR["상단: 배달지 선택 · 알림 · 장바구니"]
+  HOME --&gt; SVC["서비스 탭"]
+  SVC --&gt; S1["배달 [1]&lt;br/&gt;한집배달 · 알뜰배달"]
+  SVC --&gt; S2["가게배달 [1]"]
+  SVC --&gt; S3["포장 [1]"]
+  SVC --&gt; S4["장보기·쇼핑 [2]"]
+  SVC --&gt; S5["선물하기 [3]"]
+  HOME --&gt; BAN["프로모션 배너 [1]"]
+  HOME --&gt; CATG["음식 카테고리 그리드 [1]"]
+  HOME --&gt; REC["추천 섹션: 내 주변 인기 · 최근 주문 가게 [2]"]
+
+  CATG --&gt; LIST["가게 리스트&lt;br/&gt;정렬: 기본·배달빠른·배달팁낮은·별점·거리&lt;br/&gt;필터: 최소주문·쿠폰·배달방식"]
+  SEARCH --&gt; LIST
+  FAV --&gt; STORE
+  LIST --&gt; STORE["가게 상세&lt;br/&gt;메뉴 · 정보 · 리뷰 탭"]
+  STORE --&gt; MENU["메뉴 상세 시트&lt;br/&gt;필수/선택 옵션 · 수량"]
+  MENU --&gt; CART["장바구니&lt;br/&gt;최소주문 진행바 · 배달방식 선택"]
+  CART --&gt; CHK["주문서&lt;br/&gt;배달지 · 요청사항 · 쿠폰 · 결제수단"]
+  CHK --&gt; PAY["결제 (PG)"]
+  PAY --&gt; TRK["주문 현황&lt;br/&gt;단계 타임라인 · 라이더 지도 · 도착 예정"]
+  TRK --&gt; RV["리뷰 작성 [1]"]
+  ORD --&gt; TRK
+  ORD --&gt; REORD["재주문 [1]"]
+
+  MY --&gt; M1["배달지 관리 [1]"]
+  MY --&gt; M2["쿠폰함 [1]"]
+  MY --&gt; M3["포인트 [2]"]
+  MY --&gt; M4["결제수단 관리 [1]"]
+  MY --&gt; M5["리뷰 관리 [1]"]
+  MY --&gt; M6["멤버십 [3]"]
+  MY --&gt; M7["고객센터 · 공지 · 설정 [1]"]
+</pre></div></div>
+    <div class="dg"><h3><span>03</span>라이더 앱 메뉴 구조</h3><div class="mm"><pre class="mermaid">flowchart TD
+  R((라이더 모드)) --&gt; RH["홈: 운행 시작/종료 토글"]
+  R --&gt; RL[배차 목록]
+  R --&gt; RD[진행 중 배달]
+  R --&gt; RE[수익]
+  R --&gt; RM[마이]
+
+  RH --&gt; ON["운행 중: 위치 전송 시작"]
+  RL --&gt; OFFER["배차 요청 카드&lt;br/&gt;가게·고객 거리 · 예상 수입 · 수락 제한시간"]
+  OFFER --&gt;|수락| RD
+  RD --&gt; STEP1["가게로 이동 · 길안내"]
+  STEP1 --&gt; STEP2["픽업 완료 (주문번호 확인)"]
+  STEP2 --&gt; STEP3["고객에게 이동 · 길안내 · 안심번호 통화"]
+  STEP3 --&gt; STEP4["배달 완료 (사진 · 문 앞 전달)"]
+  RE --&gt; RE1["일별·주별 수익 · 건수"]
+  RE --&gt; RE2["정산 내역 [2]"]
+  RM --&gt; RM1["서류·보험 정보 [2]"]
+  RM --&gt; RM2["운송수단 · 계좌"]
+</pre></div></div>
+    <div class="dg"><h3><span>04</span>계약업체(업주) 대시보드 메뉴 구조</h3><div class="mm"><pre class="mermaid">flowchart TD
+  P((계약업체 /partner)) --&gt; P0[홈 요약]
+  P --&gt; P1[주문 관리]
+  P --&gt; P2[상품 관리]
+  P --&gt; P3[가게 관리]
+  P --&gt; P4[매출·정산]
+  P --&gt; P5[리뷰 관리]
+  P --&gt; P6[쿠폰·프로모션 2]
+  P --&gt; P7[계정·계약]
+
+  P0 --&gt; P0a["오늘 매출 · 주문 수 · 평균 조리시간 · 신규 리뷰"]
+  P1 --&gt; P1a["신규 → 접수(조리시간 선택) / 거절(사유)"]
+  P1 --&gt; P1b["조리중 → 조리완료(라이더 호출)"]
+  P1 --&gt; P1c["배달중 · 완료 · 취소 내역"]
+  P2 --&gt; P2a["메뉴 카테고리 등록 · 정렬"]
+  P2 --&gt; P2b["메뉴 등록: 이름 · 설명 · 가격 · 사진 · 대표/인기"]
+  P2 --&gt; P2c["옵션 그룹: 필수/선택 · 최소/최대 선택 수 · 추가금"]
+  P2 --&gt; P2d["품절 처리 · 숨김"]
+  P3 --&gt; P3a["영업시간 · 휴무일 · 임시 영업중지"]
+  P3 --&gt; P3b["배달 반경 · 최소주문 · 배달팁 구간"]
+  P3 --&gt; P3c["배달방식: 배달 / 가게배달 / 포장"]
+  P4 --&gt; P4a["매출 그래프: 일·주·월"]
+  P4 --&gt; P4b["정산 예정액 = 매출 − 수수료 − 배달비 − 쿠폰부담"]
+  P4 --&gt; P4c["정산 내역 · 세금계산서 다운로드"]
+  P5 --&gt; P5a["리뷰 목록 · 사장님 댓글"]
+  P7 --&gt; P7a["사업자 정보 · 정산 계좌 · 계약 수수료율"]
+</pre></div></div>
+    <div class="dg"><h3><span>05</span>관리자(본사) 대시보드 메뉴 구조</h3><div class="mm"><pre class="mermaid">flowchart TD
+  AD((관리자 /admin)) --&gt; A0["관제 홈: 실시간 주문 · 결제액 · 배달 지연"]
+  AD --&gt; A1["입점 심사: 신청 → 서류 확인 → 계약 → 승인/반려"]
+  AD --&gt; A2["가게 관리: 수수료율 · 노출 · 제재"]
+  AD --&gt; A3["주문·결제 관리: 조회 · 강제 취소 · 환불"]
+  AD --&gt; A4["라이더 관제: 지도에 운행 중 라이더 · 배차 현황"]
+  AD --&gt; A5["정산 관리: 정산 생성 → 검토 → 지급 확정"]
+  AD --&gt; A6["쿠폰·배너 관리"]
+  AD --&gt; A7["고객 문의 · 신고"]
+</pre></div></div>
+    <div class="dg"><h3><span>06</span>주문 흐름 (시퀀스)</h3><div class="mm"><pre class="mermaid">sequenceDiagram
+  autonumber
+  actor C as 고객
+  participant APP as 고객 앱
+  participant EF as Edge Function
+  participant PG as PG사
+  participant DB as Supabase DB
+  participant RT as Realtime
+  actor P as 계약업체
+  actor R as 라이더
+
+  C-&gt;&gt;APP: 장바구니 → 주문하기
+  APP-&gt;&gt;EF: create_order(장바구니, 배달지, 쿠폰)
+  EF-&gt;&gt;DB: 금액 서버 재계산 · 최소주문/반경 검증
+  EF--&gt;&gt;APP: 결제 요청 정보(orderId, amount)
+  APP-&gt;&gt;PG: 결제창
+  PG--&gt;&gt;EF: 결제 승인 웹훅
+  EF-&gt;&gt;DB: payments=paid, orders=placed
+  DB--&gt;&gt;RT: 신규 주문 이벤트
+  RT--&gt;&gt;P: 신규 주문 알림(소리)
+  P-&gt;&gt;DB: 접수 + 조리시간 30분
+  DB--&gt;&gt;RT: accepted
+  RT--&gt;&gt;APP: "가게에서 주문을 접수했어요"
+  P-&gt;&gt;DB: 조리완료(ready)
+  DB-&gt;&gt;EF: 배차 요청
+  EF--&gt;&gt;R: 배차 카드(푸시)
+  R-&gt;&gt;DB: 수락 → 픽업 → 배달완료
+  DB--&gt;&gt;RT: 상태 · 위치 갱신
+  RT--&gt;&gt;APP: 실시간 추적
+  C-&gt;&gt;APP: 리뷰 작성
+</pre></div></div>
+    <div class="dg"><h3><span>07</span>주문 상태 머신</h3><div class="mm"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; pending_payment: 주문서 생성
+  pending_payment --&gt; placed: 결제 승인
+  pending_payment --&gt; [*]: 결제 실패·이탈
+  placed --&gt; accepted: 업주 접수(조리시간)
+  placed --&gt; canceled: 업주 거절 · 고객 취소
+  accepted --&gt; preparing
+  preparing --&gt; ready: 조리완료
+  ready --&gt; dispatched: 라이더 배정
+  dispatched --&gt; picked_up: 픽업
+  picked_up --&gt; delivered: 배달완료
+  ready --&gt; delivered: 포장 수령 / 가게배달 완료
+  accepted --&gt; canceled: 업주 취소(환불)
+  delivered --&gt; [*]
+  canceled --&gt; [*]
+</pre></div></div>
+    <div class="dg"><h3><span>08</span>라이더 위치 확인 (위치 기반)</h3><div class="mm"><pre class="mermaid">sequenceDiagram
+  autonumber
+  actor R as 라이더 앱
+  participant GPS as 기기 GPS
+  participant RT as Realtime 주문 위치 채널
+  participant DB as rider_locations
+  actor C as 고객 앱
+  actor P as 업주 대시보드
+
+  R-&gt;&gt;GPS: 운행 시작(백그라운드 위치 권한)
+  loop 배달 중 3~5초 간격 (정차 시 15초)
+    GPS--&gt;&gt;R: lat, lng, heading, speed
+    R-&gt;&gt;RT: broadcast(위치)
+    R-&gt;&gt;DB: 30초마다 최신 위치 upsert(이력 축약)
+  end
+  RT--&gt;&gt;C: 지도 마커 이동 + 도착 예정 갱신
+  RT--&gt;&gt;P: 픽업 전 "라이더 도착까지 n분"
+  Note over C: 픽업 전에는 가게 방향,&lt;br/&gt;픽업 후에는 고객 방향 경로 표시
+  R-&gt;&gt;RT: 배달완료 → 채널 종료
+  Note over DB: 배달 완료 후 위치 이력은&lt;br/&gt;7일 뒤 자동 삭제(개인정보)
+</pre></div></div>
+    <div class="dg"><h3><span>09</span>라이더 상태 머신 · 배차</h3><div class="mm"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; offline
+  offline --&gt; idle: 운행 시작
+  idle --&gt; offered: 배차 요청 수신
+  offered --&gt; idle: 거절 · 시간초과(30초)
+  offered --&gt; to_store: 수락
+  to_store --&gt; at_store: 가게 도착(반경 50m)
+  at_store --&gt; to_customer: 픽업 완료
+  to_customer --&gt; idle: 배달 완료
+  idle --&gt; offline: 운행 종료
+</pre></div><div class="mm"><pre class="mermaid">flowchart LR
+  A[조리완료 or 예상 픽업 n분 전] --&gt; B["가게 반경 2km 내&lt;br/&gt;idle 라이더 검색 (PostGIS)"]
+  B --&gt; C[거리·수락률 순 정렬]
+  C --&gt; D[1순위에게 배차 요청 30초]
+  D --&gt;|거절·초과| E[다음 순위]
+  E --&gt; D
+  D --&gt;|수락| F[deliveries.rider_id 확정]
+  B --&gt;|라이더 없음| G[반경 확대 3km → 관리자 알림]
+</pre></div></div>
+    <div class="dg"><h3><span>10</span>계약업체 입점 · 상품 등록 흐름</h3><div class="mm"><pre class="mermaid">flowchart TD
+  A[입점 신청&lt;br/&gt;사업자등록증 · 영업신고증 · 통장사본] --&gt; B{관리자 심사}
+  B --&gt;|반려| A
+  B --&gt;|승인| C[계약: 수수료율 · 정산주기 확정]
+  C --&gt; D[업주 계정 활성화]
+  D --&gt; E[가게 정보 입력&lt;br/&gt;주소 → 좌표 · 영업시간 · 배달반경]
+  E --&gt; F[메뉴 카테고리 생성]
+  F --&gt; G[메뉴 등록&lt;br/&gt;이름 · 가격 · 설명 · 사진]
+  G --&gt; H[옵션 그룹 연결&lt;br/&gt;필수/선택 · 최소/최대 · 추가금]
+  H --&gt; I{미리보기 확인}
+  I --&gt;|수정| G
+  I --&gt;|완료| J[영업 시작 토글]
+  J --&gt; K[고객 앱 노출]
+</pre></div><div class="mm"><pre class="mermaid">sequenceDiagram
+  actor P as 업주
+  participant W as /partner 상품관리
+  participant ST as Storage
+  participant DB as menus · option_groups · options
+
+  P-&gt;&gt;W: 메뉴 추가
+  P-&gt;&gt;W: 사진 선택
+  W-&gt;&gt;ST: 업로드(자동 리사이즈 1:1, 16:9)
+  ST--&gt;&gt;W: image_url
+  P-&gt;&gt;W: 이름 · 가격 · 옵션 입력
+  W-&gt;&gt;DB: insert (트랜잭션)
+  DB--&gt;&gt;W: 저장 완료
+  P-&gt;&gt;W: 품절 토글
+  W-&gt;&gt;DB: is_sold_out = true
+  DB--&gt;&gt;W: Realtime → 고객 화면 즉시 '품절'
+</pre></div></div>
+    <div class="dg"><h3><span>11</span>결제 흐름 (결제 · 취소 · 환불)</h3><div class="mm"><pre class="mermaid">sequenceDiagram
+  autonumber
+  actor C as 고객
+  participant APP as 앱
+  participant EF as Edge Function
+  participant PG as PG사
+  participant DB as DB
+
+  C-&gt;&gt;APP: 결제하기
+  APP-&gt;&gt;EF: prepare(orderId)
+  EF-&gt;&gt;DB: payments(pending, 금액 고정)
+  APP-&gt;&gt;PG: 결제창(카드·간편결제)
+  PG--&gt;&gt;APP: 인증 완료
+  APP-&gt;&gt;EF: confirm(paymentKey)
+  EF-&gt;&gt;PG: 승인 요청(금액 검증)
+  PG--&gt;&gt;EF: 승인
+  EF-&gt;&gt;DB: payments=paid, orders=placed
+  alt 업주 거절 · 접수 전 고객 취소
+    EF-&gt;&gt;PG: 전액 취소
+    EF-&gt;&gt;DB: payments=refunded, orders=canceled
+  else 부분 취소(품절 메뉴 제외)
+    EF-&gt;&gt;PG: 부분 취소
+    EF-&gt;&gt;DB: refunds 기록
+  end
+</pre></div></div>
+    <div class="dg"><h3><span>12</span>정산 흐름 · 정산 대시보드 데이터</h3><div class="mm"><pre class="mermaid">flowchart LR
+  O[배달완료 주문] --&gt; L["정산 원장 settlement_items&lt;br/&gt;주문별: 매출 · 수수료 · 배달비 · 쿠폰부담 · 결제수수료"]
+  L --&gt; B["정산 배치 (주 1회)&lt;br/&gt;기간별 합계 → settlements"]
+  B --&gt; R[관리자 검토]
+  R --&gt;|확정| PAY[지급 · 상태 paid]
+  R --&gt;|보류| H[사유 기록]
+  L --&gt; DASH1[업주 매출·정산 대시보드]
+  B --&gt; DASH1
+  L --&gt; DASH2[관리자 정산 관리]
+  DL[라이더 배달 완료] --&gt; RL[라이더 수익 원장] --&gt; DASH3[라이더 수익 화면]
+</pre></div></div>
+    <div class="dg"><h3><span>13</span>ERD (확장)</h3><div class="mm"><pre class="mermaid">erDiagram
+  profiles ||--o{ addresses : has
+  profiles ||--o| rider_profiles : "is rider"
+  profiles ||--o{ orders : places
+  profiles ||--o{ reviews : writes
+  profiles ||--o{ favorites : likes
+  profiles ||--o{ user_coupons : owns
+
+  partner_applications ||--o| stores : "approved as"
+  profiles ||--o{ stores : owns
+  store_categories ||--o{ stores : groups
+  stores ||--o{ store_hours : opens
+  stores ||--o{ delivery_fee_rules : charges
+  stores ||--o{ menu_categories : has
+  menu_categories ||--o{ menus : has
+  menus ||--o{ option_groups : has
+  option_groups ||--o{ options : has
+
+  profiles ||--o| carts : owns
+  carts ||--o{ cart_items : contains
+
+  stores ||--o{ orders : receives
+  orders ||--|{ order_items : contains
+  orders ||--o{ order_status_logs : tracks
+  orders ||--o| payments : "paid by"
+  payments ||--o{ refunds : has
+  orders ||--o| deliveries : "delivered by"
+  rider_profiles ||--o{ deliveries : performs
+  rider_profiles ||--o| rider_locations : "current at"
+  deliveries ||--o{ dispatch_offers : offers
+  orders ||--o| reviews : "reviewed by"
+
+  orders ||--o| settlement_items : "settled in"
+  settlements ||--o{ settlement_items : groups
+  stores ||--o{ settlements : receives
+  coupons ||--o{ user_coupons : issued
+
+  stores {
+    uuid id PK
+    uuid owner_id FK
+    geography location
+    int delivery_radius_m
+    int min_order_amount
+    numeric commission_rate
+    bool is_open
+  }
+  rider_locations {
+    uuid rider_id PK
+    geography location
+    float heading
+    float speed
+    timestamptz updated_at
+  }
+  settlements {
+    uuid id PK
+    uuid store_id FK
+    date period_start
+    date period_end
+    int gross_amount
+    int fee_amount
+    int payout_amount
+    text status
+  }
+</pre></div></div>
+  </div>
+</section>
+
+</main>
+
+<script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+<script>
+(function(){
+  try{ if(window.lucide) lucide.createIcons({attrs:{'stroke-width':2}}); }catch(e){}
+
+  /* 지도: 시안용 가상 지도. 실제 SDK는 네이버/카카오 지도 */
+  var W=300,H=300;
+  function base(w,h,seed){
+    var s='<rect width="'+w+'" height="'+h+'" fill="#F2F1EE"/>';
+    s+='<path d="M0 '+(h*0.78)+' C '+(w*0.3)+' '+(h*0.7)+', '+(w*0.6)+' '+(h*0.92)+', '+w+' '+(h*0.82)+' L '+w+' '+h+' L 0 '+h+' Z" fill="#CFE3F1"/>';
+    var step=46, off=(seed||0)%20;
+    for(var x=off; x<w; x+=step){ for(var y=off; y<h*0.76; y+=step){
+      s+='<rect x="'+(x+6)+'" y="'+(y+6)+'" width="'+(step-12)+'" height="'+(step-12)+'" rx="4" fill="'+(((x+y)/step)%7===3?'#D9EAD3':'#E5E3DD')+'"/>';
+    }}
+    s+='<path d="M0 '+(h*0.18)+' L '+w+' '+(h*0.48)+'" stroke="#FFFFFF" stroke-width="9"/>';
+    s+='<path d="M'+(w*0.62)+' 0 L '+(w*0.5)+' '+h+'" stroke="#FFFFFF" stroke-width="7"/>';
+    return s;
+  }
+  function store(x,y){return '<g transform="translate('+x+' '+y+')"><rect x="-11" y="-11" width="22" height="22" rx="6" fill="#17171C"/><path d="M-6 -2 h12 v7 h-12z M-7 -2 l2 -4 h10 l2 4" fill="none" stroke="#fff" stroke-width="1.6"/></g>';}
+  function home(x,y){return '<g transform="translate('+x+' '+y+')"><path d="M0 12 C -10 2 -10 -12 0 -12 C 10 -12 10 2 0 12Z" fill="#2F7DE1"/><path d="M-4 -1 L0 -5 L4 -1 V3 H-4Z" fill="#fff"/></g>';}
+  function rider(x,y,ang,color,pulse){
+    color=color||'#FF5A36';
+    return (pulse?'<circle class="rider-pulse" cx="'+x+'" cy="'+y+'" r="9" fill="'+color+'" opacity=".35"/>':'')+
+      '<g transform="translate('+x+' '+y+') rotate('+(ang||0)+')"><circle r="9" fill="'+color+'" stroke="#fff" stroke-width="2.5"/><path d="M0 -5 L4 3 L0 1 L-4 3Z" fill="#fff"/></g>';
+  }
+  function path(pts,dash,color){return '<polyline points="'+pts.map(function(p){return p.join(',')}).join(' ')+'" fill="none" stroke="'+(color||'#FF5A36')+'" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" '+(dash?'stroke-dasharray="2 7" ':'')+'/>';}
+
+  var maps={
+    track:function(){ var w=300,h=300; return {w:w,h:h,s:base(w,h,3)+path([[60,70],[120,98],[170,120]],true,'#7C7C89')+path([[170,120],[205,135],[225,190],[245,215]])+store(60,70)+home(245,215)+rider(170,120,60,null,true)}; },
+    offer:function(){ var w=300,h=620; return {w:w,h:h,s:base(w,h,11)+path([[150,150],[90,95]],true,'#7C7C89')+path([[90,95],[175,160],[215,250]])+store(90,95)+home(215,250)+rider(150,150,-50,null,true)}; },
+    rider:function(){ var w=300,h=330; return {w:w,h:h,s:base(w,h,7)+path([[150,240],[170,160],[185,100]])+store(185,100)+rider(150,240,10,null,true)}; },
+    admin:function(){ var w=640,h=500; var s=base(w,h,5); var pts=[[80,60,'#1E9E5A'],[140,120,'#FF5A36'],[210,90,'#FF5A36'],[260,180,'#2F7DE1'],[330,70,'#1E9E5A'],[380,150,'#FF5A36'],[450,110,'#FF5A36'],[520,60,'#2F7DE1'],[560,170,'#1E9E5A'],[120,240,'#FF5A36'],[200,290,'#1E9E5A'],[300,260,'#FF5A36'],[420,240,'#2F7DE1'],[500,300,'#FF5A36'],[90,330,'#2F7DE1'],[360,330,'#1E9E5A']];
+      s+='<circle cx="300" cy="200" r="120" fill="#FF5A36" fill-opacity=".06" stroke="#FF5A36" stroke-dasharray="4 6"/>'+store(300,200);
+      pts.forEach(function(p,i){ s+=rider(p[0],p[1],(i*47)%360,p[2],false); });
+      return {w:w,h:h,s:s}; }
+  };
+  document.querySelectorAll('[data-map]').forEach(function(el){
+    var m=maps[el.getAttribute('data-map')]();
+    el.innerHTML='<svg viewBox="0 0 '+m.w+' '+m.h+'" preserveAspectRatio="xMidYMid slice" role="img" aria-label="지도 시안">'+m.s+'</svg>';
+  });
+
+  /* 일별 매출 막대 차트 (예시 데이터) */
+  var days=['10/17','10/18','10/19','10/20','10/21','10/22','10/23'];
+  var sales=[412000,438000,395000,451000,506000,548000,490000];
+  var cw=520,ch=230,pl=48,pr=12,pt=14,pb=28,max=600000;
+  var y=function(v){return pt+(ch-pt-pb)*(1-v/max);};
+  var bw=(cw-pl-pr)/days.length;
+  var s='';
+  [0,200000,400000,600000].forEach(function(t){ s+='<line x1="'+pl+'" x2="'+(cw-pr)+'" y1="'+y(t)+'" y2="'+y(t)+'" stroke="#E4E4E8"/><text x="'+(pl-8)+'" y="'+(y(t)+4)+'" text-anchor="end" font-size="11" fill="#7C7C89" font-family="IBM Plex Mono, monospace">'+(t/10000)+'만</text>'; });
+  sales.forEach(function(v,i){
+    var x=pl+i*bw+bw*0.2, w=bw*0.6, top=y(v), last=i===sales.length-2;
+    s+='<rect x="'+x+'" y="'+top+'" width="'+w+'" height="'+(y(0)-top)+'" rx="4" fill="'+(last?'#FF5A36':'#FFBBA7')+'"/>';
+    s+='<text x="'+(x+w/2)+'" y="'+(top-5)+'" text-anchor="middle" font-size="10" fill="'+(last?'#C2361A':'#5B5B67')+'" font-family="IBM Plex Mono, monospace" font-weight="'+(last?700:400)+'">'+Math.round(v/1000)+'k</text>';
+    s+='<text x="'+(x+w/2)+'" y="'+(ch-8)+'" text-anchor="middle" font-size="11" fill="#5B5B67">'+days[i]+'</text>';
+  });
+  var c=document.getElementById('salesChart');
+  if(c) c.innerHTML='<svg viewBox="0 0 '+cw+' '+ch+'" role="img" aria-label="일별 매출, 최고 10월 22일 548,000원">'+s+'</svg>';
+})();
+</script>
